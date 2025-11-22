@@ -16,3 +16,7 @@ requests>=2.31.0
 
 # Logging and monitoring
 loguru>=0.7.0
+
+# OCR dependencies
+pytesseract>=0.3.10
+easyocr>=1.7.0

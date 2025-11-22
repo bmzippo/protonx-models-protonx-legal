@@ -6,8 +6,9 @@ A Python-based REST API service for deploying the ProtonX Legal Text Classificat
 
 - 🚀 FastAPI-based REST API
 - 🤖 HuggingFace Transformers integration
-- 📦 Docker support for easy deployment
+- 📷 OCR image upload for text extraction (EasyOCR/Tesseract)
 - 🔄 Single and batch prediction endpoints
+- 📦 Docker support for easy deployment
 - 📊 Health monitoring and model info endpoints
 - ⚙️ Configurable via environment variables
 - 🪵 Structured logging with Loguru
@@ -20,6 +21,7 @@ A Python-based REST API service for deploying the ProtonX Legal Text Classificat
 │   ├── __init__.py         # Package initialization
 │   ├── config.py           # Configuration management
 │   ├── model.py            # Model loading and inference
+│   ├── ocr_model.py        # OCR processing
 │   ├── api.py              # FastAPI application
 │   └── main.py             # Entry point
 ├── requirements.txt        # Python dependencies
@@ -37,7 +39,20 @@ A Python-based REST API service for deploying the ProtonX Legal Text Classificat
 - PyTorch
 - Transformers
 - FastAPI
+- EasyOCR or Tesseract OCR (for image text extraction)
 - Other dependencies listed in `requirements.txt`
+
+### OCR Setup
+
+For OCR functionality, the API uses EasyOCR by default, which is automatically installed with the dependencies. If you prefer to use Tesseract, install it separately:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install tesseract-ocr tesseract-ocr-vie tesseract-ocr-eng
+
+# macOS
+brew install tesseract tesseract-lang
+```
 
 ## Installation
 
@@ -92,6 +107,9 @@ Configuration can be set via environment variables or a `.env` file:
 | `API_PORT` | `8000` | API server port |
 | `API_WORKERS` | `1` | Number of API workers |
 | `LOG_LEVEL` | `INFO` | Logging level |
+| `OCR_ENGINE` | `easyocr` | OCR engine to use (`easyocr` or `tesseract`) |
+| `OCR_LANGUAGES` | `vi,en` | Comma-separated list of language codes for OCR |
+| `MAX_UPLOAD_SIZE` | `10485760` | Maximum upload file size in bytes (default: 10MB) |
 
 ## Usage
 
@@ -188,6 +206,60 @@ Response:
 }
 ```
 
+#### OCR Image Upload
+```bash
+POST /ocr/upload
+Content-Type: multipart/form-data
+
+file: [image file]
+```
+
+Upload an image and extract text using OCR. Supports JPG, PNG, and other common image formats.
+
+Response:
+```json
+{
+  "text": "Extracted text from the image",
+  "lines": [
+    {
+      "text": "Line 1",
+      "confidence": 0.95,
+      "bbox": [x1, y1, x2, y2]
+    }
+  ],
+  "average_confidence": 0.94,
+  "engine": "easyocr"
+}
+```
+
+#### OCR with Classification
+```bash
+POST /ocr/upload-and-classify
+Content-Type: multipart/form-data
+
+file: [image file]
+```
+
+Upload an image, extract text, and classify it in one request.
+
+Response:
+```json
+{
+  "ocr_result": {
+    "text": "Extracted text",
+    "lines": [...],
+    "average_confidence": 0.94,
+    "engine": "easyocr"
+  },
+  "classification": {
+    "predicted_class": 0,
+    "confidence": 0.95,
+    "predicted_label": "LABEL_0",
+    ...
+  }
+}
+```
+
 ### Example Client
 
 An example Python client is provided in `example_client.py`:
@@ -207,6 +279,14 @@ curl http://localhost:8000/health
 curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
   -d '{"text": "Điều 1. Phạm vi điều chỉnh của Luật này..."}'
+
+# Test OCR image upload
+curl -X POST http://localhost:8000/ocr/upload \
+  -F "file=@/path/to/your/image.jpg"
+
+# Test OCR with classification
+curl -X POST http://localhost:8000/ocr/upload-and-classify \
+  -F "file=@/path/to/your/legal-document.jpg"
 ```
 
 ## API Documentation
