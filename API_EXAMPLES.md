@@ -6,6 +6,8 @@ This document provides practical examples of using the ProtonX Legal Text Classi
 - [Getting Started](#getting-started)
 - [Single Text Classification](#single-text-classification)
 - [Batch Classification](#batch-classification)
+- [OCR Image Upload](#ocr-image-upload)
+- [OCR with Classification](#ocr-with-classification)
 - [Health Checks](#health-checks)
 - [Python Client Examples](#python-client-examples)
 - [JavaScript/Node.js Examples](#javascriptnodejs-examples)
@@ -110,6 +112,122 @@ Content-Type: application/json
     }
   ]
 }
+```
+
+## OCR Image Upload
+
+### Request
+
+Upload an image file to extract text using OCR.
+
+```http
+POST /ocr/upload
+Content-Type: multipart/form-data
+
+file: [image file]
+```
+
+### Response
+
+```json
+{
+  "text": "Điều 1. Phạm vi điều chỉnh của Luật này là quy định về quyền và nghĩa vụ của công dân trong hoạt động kinh doanh.",
+  "lines": [
+    {
+      "text": "Điều 1. Phạm vi điều chỉnh",
+      "confidence": 0.95,
+      "bbox": [10, 20, 300, 45]
+    },
+    {
+      "text": "của Luật này là quy định",
+      "confidence": 0.93,
+      "bbox": [10, 50, 280, 75]
+    }
+  ],
+  "average_confidence": 0.94,
+  "engine": "easyocr"
+}
+```
+
+### cURL Example
+
+```bash
+curl -X POST "http://localhost:8000/ocr/upload" \
+  -F "file=@/path/to/your/image.jpg"
+```
+
+## OCR with Classification
+
+Upload an image, extract text, and classify the extracted text in one request.
+
+### Request
+
+```http
+POST /ocr/upload-and-classify
+Content-Type: multipart/form-data
+
+file: [image file]
+```
+
+### Response
+
+```json
+{
+  "ocr_result": {
+    "text": "Điều 1. Phạm vi điều chỉnh của Luật này là quy định về quyền và nghĩa vụ của công dân.",
+    "lines": [
+      {
+        "text": "Điều 1. Phạm vi điều chỉnh",
+        "confidence": 0.95,
+        "bbox": [10, 20, 300, 45]
+      }
+    ],
+    "average_confidence": 0.94,
+    "engine": "easyocr"
+  },
+  "classification": {
+    "predicted_class": 0,
+    "confidence": 0.9523,
+    "all_scores": [0.9523, 0.0321, 0.0156],
+    "predicted_label": "Luật",
+    "all_labels": {
+      "Luật": 0.9523,
+      "Hợp đồng": 0.0321,
+      "Quyết định": 0.0156
+    }
+  }
+}
+```
+
+### cURL Example
+
+```bash
+curl -X POST "http://localhost:8000/ocr/upload-and-classify" \
+  -F "file=@/path/to/your/legal-document.jpg"
+```
+
+### Python Example
+
+```python
+import requests
+
+# Upload and OCR
+with open('/path/to/image.jpg', 'rb') as f:
+    files = {'file': f}
+    response = requests.post('http://localhost:8000/ocr/upload', files=files)
+    ocr_result = response.json()
+    print(f"Extracted text: {ocr_result['text']}")
+    print(f"Confidence: {ocr_result['average_confidence']:.2%}")
+
+# Upload, OCR, and classify
+with open('/path/to/image.jpg', 'rb') as f:
+    files = {'file': f}
+    response = requests.post('http://localhost:8000/ocr/upload-and-classify', files=files)
+    result = response.json()
+    print(f"Extracted text: {result['ocr_result']['text']}")
+    if result['classification']:
+        print(f"Classification: {result['classification']['predicted_label']}")
+        print(f"Confidence: {result['classification']['confidence']:.2%}")
 ```
 
 ## Health Checks

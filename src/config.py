@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     
+    # OCR settings
+    ocr_engine: str = "easyocr"  # 'easyocr' or 'tesseract'
+    ocr_languages: str = "vi,en"  # Comma-separated list of language codes
+    max_upload_size: int = 10 * 1024 * 1024  # 10MB default
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
