@@ -177,11 +177,22 @@ class LegalTextClassifier:
 
 
 # Global model instance
+# Note: This is a singleton pattern for model loading. In production with multiple
+# workers, each worker process will have its own instance. For true multi-threading,
+# consider using FastAPI's dependency injection with a shared instance.
 model_instance = None
 
 
 def get_model() -> LegalTextClassifier:
-    """Get or create the global model instance."""
+    """
+    Get or create the global model instance.
+    
+    This function implements a simple singleton pattern for the model.
+    The model is loaded once per worker process and reused for all requests.
+    
+    Returns:
+        LegalTextClassifier: The model instance
+    """
     global model_instance
     if model_instance is None:
         model_instance = LegalTextClassifier()

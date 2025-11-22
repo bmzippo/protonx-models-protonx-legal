@@ -1,5 +1,6 @@
 """FastAPI application for the OCR service."""
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -7,13 +8,6 @@ from loguru import logger
 
 from .model import get_model
 from .config import settings
-
-# Initialize FastAPI app
-app = FastAPI(
-    title="ProtonX Legal Text Classification API",
-    description="API for legal document text classification using ProtonX models",
-    version="0.1.0"
-)
 
 
 class TextInput(BaseModel):
@@ -40,9 +34,10 @@ class BatchPredictionResponse(BaseModel):
     predictions: List[PredictionResponse]
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Load model on startup."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan - load model on startup, cleanup on shutdown."""
+    # Startup
     logger.info("Starting up the API server...")
     try:
         # Initialize model
@@ -51,6 +46,20 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to load model on startup: {str(e)}")
         raise
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down the API server...")
+
+
+# Initialize FastAPI app with lifespan
+app = FastAPI(
+    title="ProtonX Legal Text Classification API",
+    description="API for legal document text classification using ProtonX models",
+    version="0.1.0",
+    lifespan=lifespan
+)
 
 
 @app.get("/")
