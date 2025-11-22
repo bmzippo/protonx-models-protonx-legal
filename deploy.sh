@@ -94,8 +94,17 @@ case $choice in
         echo -e "${YELLOW}Pre-downloading model...${NC}"
         echo "This will download the model cache that can be used offline"
         
-        # Create a temporary Python script to download the model
-        cat > /tmp/download_model.py << 'EOF'
+        # Check if python3 is available
+        if ! command -v python3 &> /dev/null; then
+            echo -e "${RED}Error: Python 3 is not installed${NC}"
+            echo "Please install Python 3 first"
+            exit 1
+        fi
+        
+        # Create a secure temporary Python script to download the model
+        TEMP_SCRIPT=$(mktemp)
+        chmod 600 "$TEMP_SCRIPT"
+        cat > "$TEMP_SCRIPT" << 'EOF'
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import os
 
@@ -115,7 +124,7 @@ except Exception as e:
 EOF
         
         # Run the download script
-        python3 /tmp/download_model.py
+        python3 "$TEMP_SCRIPT"
         
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}✓ Model downloaded successfully${NC}"
@@ -126,7 +135,7 @@ EOF
         fi
         
         # Clean up
-        rm /tmp/download_model.py
+        rm -f "$TEMP_SCRIPT"
         ;;
     *)
         echo -e "${RED}Invalid option${NC}"

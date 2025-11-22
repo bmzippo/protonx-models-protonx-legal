@@ -30,9 +30,9 @@ test_endpoint() {
     echo -n "Testing $name... "
     
     if [ "$method" = "GET" ]; then
-        response=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+        response=$(curl -s --connect-timeout 5 --max-time 10 -o /dev/null -w "%{http_code}" "$url")
     else
-        response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$url" \
+        response=$(curl -s --connect-timeout 5 --max-time 10 -o /dev/null -w "%{http_code}" -X POST "$url" \
             -H "Content-Type: application/json" \
             -d "$data")
     fi
@@ -48,7 +48,7 @@ test_endpoint() {
 
 # Check if API is running
 echo "1. Checking if API is accessible..."
-if curl -s "$API_URL" > /dev/null 2>&1; then
+if curl -s --connect-timeout 5 --max-time 10 "$API_URL" > /dev/null 2>&1; then
     echo -e "${GREEN}✓ API is accessible${NC}"
     ((PASSED++))
 else
