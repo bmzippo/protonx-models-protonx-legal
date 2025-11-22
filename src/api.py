@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from loguru import logger
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import io
 
 from .model import get_model
@@ -165,6 +165,41 @@ async def model_info():
         raise HTTPException(status_code=500, detail=f"Failed to get model info: {str(e)}")
 
 
+async def validate_and_load_image(file: UploadFile) -> Image.Image:
+    """
+    Validate and load an uploaded image file.
+    
+    Args:
+        file: Uploaded file
+        
+    Returns:
+        PIL Image object
+        
+    Raises:
+        HTTPException: If validation fails
+    """
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    
+    # Read image data
+    image_data = await file.read()
+    
+    # Check file size
+    if len(image_data) > settings.max_upload_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum size: {settings.max_upload_size} bytes"
+        )
+    
+    # Open image with PIL
+    try:
+        image = Image.open(io.BytesIO(image_data))
+        return image
+    except (UnidentifiedImageError, OSError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
+
+
 @app.post("/ocr/upload", response_model=OCRResponse)
 async def ocr_upload(file: UploadFile = File(...)):
     """
@@ -177,25 +212,8 @@ async def ocr_upload(file: UploadFile = File(...)):
         OCR results with extracted text and confidence scores
     """
     try:
-        # Validate file type
-        if not file.content_type or not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="File must be an image")
-        
-        # Read image data
-        image_data = await file.read()
-        
-        # Check file size
-        if len(image_data) > settings.max_upload_size:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large. Maximum size: {settings.max_upload_size} bytes"
-            )
-        
-        # Open image with PIL
-        try:
-            image = Image.open(io.BytesIO(image_data))
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
+        # Validate and load image
+        image = await validate_and_load_image(file)
         
         # Get OCR processor
         languages = settings.ocr_languages.split(',')
@@ -227,25 +245,8 @@ async def ocr_upload_and_classify(file: UploadFile = File(...)):
         OCR results and classification of the extracted text
     """
     try:
-        # Validate file type
-        if not file.content_type or not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="File must be an image")
-        
-        # Read image data
-        image_data = await file.read()
-        
-        # Check file size
-        if len(image_data) > settings.max_upload_size:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File too large. Maximum size: {settings.max_upload_size} bytes"
-            )
-        
-        # Open image with PIL
-        try:
-            image = Image.open(io.BytesIO(image_data))
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
+        # Validate and load image
+        image = await validate_and_load_image(file)
         
         # Get OCR processor
         languages = settings.ocr_languages.split(',')

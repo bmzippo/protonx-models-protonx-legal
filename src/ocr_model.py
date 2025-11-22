@@ -59,7 +59,7 @@ class OCRProcessor:
                     logger.info("Tesseract OCR initialized successfully")
                 except Exception as e:
                     logger.error(f"Tesseract not found: {e}")
-                    raise RuntimeError("Tesseract executable not found. Please install tesseract-ocr.")
+                    raise RuntimeError(f"Tesseract executable not found. Please install tesseract-ocr. Original error: {e}")
             else:
                 raise ValueError(f"Unknown OCR engine: {self.engine}")
                 
@@ -183,7 +183,10 @@ def get_ocr_processor(engine: str = "easyocr", languages: list = None) -> OCRPro
         OCRProcessor instance
     """
     global _ocr_processor
-    if _ocr_processor is None:
+    languages = languages or ['vi', 'en']
+    
+    # Check if we need to create a new processor or if the existing one matches
+    if _ocr_processor is None or _ocr_processor.engine != engine or _ocr_processor.languages != languages:
         _ocr_processor = OCRProcessor(engine=engine, languages=languages)
         _ocr_processor.initialize()
     return _ocr_processor

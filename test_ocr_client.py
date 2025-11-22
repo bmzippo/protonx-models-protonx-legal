@@ -19,7 +19,7 @@ def create_test_image():
     # Try to use default font
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
-    except:
+    except (OSError, IOError):
         font = ImageFont.load_default()
     
     # Draw Vietnamese legal text (using ASCII approximation for test)
