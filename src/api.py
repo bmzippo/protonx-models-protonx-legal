@@ -200,6 +200,18 @@ async def validate_and_load_image(file: UploadFile) -> Image.Image:
         raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
 
 
+def get_configured_ocr_processor():
+    """
+    Get OCR processor with configuration from settings.
+    
+    Returns:
+        OCRProcessor instance configured with settings
+    """
+    # Parse languages and strip whitespace
+    languages = [lang.strip() for lang in settings.ocr_languages.split(',')]
+    return get_ocr_processor(engine=settings.ocr_engine, languages=languages)
+
+
 @app.post("/ocr/upload", response_model=OCRResponse)
 async def ocr_upload(file: UploadFile = File(...)):
     """
@@ -216,8 +228,7 @@ async def ocr_upload(file: UploadFile = File(...)):
         image = await validate_and_load_image(file)
         
         # Get OCR processor
-        languages = settings.ocr_languages.split(',')
-        ocr_processor = get_ocr_processor(engine=settings.ocr_engine, languages=languages)
+        ocr_processor = get_configured_ocr_processor()
         
         # Process image
         result = ocr_processor.process_image(image)
@@ -249,8 +260,7 @@ async def ocr_upload_and_classify(file: UploadFile = File(...)):
         image = await validate_and_load_image(file)
         
         # Get OCR processor
-        languages = settings.ocr_languages.split(',')
-        ocr_processor = get_ocr_processor(engine=settings.ocr_engine, languages=languages)
+        ocr_processor = get_configured_ocr_processor()
         
         # Process image
         ocr_result = ocr_processor.process_image(image)

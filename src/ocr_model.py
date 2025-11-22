@@ -57,14 +57,14 @@ class OCRProcessor:
                 try:
                     pytesseract.get_tesseract_version()
                     logger.info("Tesseract OCR initialized successfully")
-                except Exception as e:
+                except (FileNotFoundError, OSError) as e:
                     logger.error(f"Tesseract not found: {e}")
                     raise RuntimeError(f"Tesseract executable not found. Please install tesseract-ocr. Original error: {e}")
             else:
                 raise ValueError(f"Unknown OCR engine: {self.engine}")
                 
             self._initialized = True
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             logger.error(f"Failed to initialize OCR engine: {str(e)}")
             raise
     
@@ -81,16 +81,12 @@ class OCRProcessor:
         if not self._initialized:
             self.initialize()
         
-        try:
-            if self.engine == "easyocr":
-                return self._process_with_easyocr(image)
-            elif self.engine == "tesseract":
-                return self._process_with_tesseract(image)
-            else:
-                raise ValueError(f"Unknown OCR engine: {self.engine}")
-        except Exception as e:
-            logger.error(f"Error processing image: {str(e)}")
-            raise
+        if self.engine == "easyocr":
+            return self._process_with_easyocr(image)
+        elif self.engine == "tesseract":
+            return self._process_with_tesseract(image)
+        else:
+            raise ValueError(f"Unknown OCR engine: {self.engine}")
     
     def _process_with_easyocr(self, image: Image.Image) -> Dict[str, Any]:
         """Process image with EasyOCR."""
