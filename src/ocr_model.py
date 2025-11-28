@@ -1,6 +1,8 @@
 """OCR model for extracting text from images."""
 
 import io
+import ssl
+import certifi
 from typing import Dict, Any, Optional
 from PIL import Image
 from loguru import logger
@@ -47,7 +49,27 @@ class OCRProcessor:
                 if not EASYOCR_AVAILABLE:
                     raise RuntimeError("EasyOCR is not installed")
                 logger.info(f"Initializing EasyOCR with languages: {self.languages}")
+                
+                # Fix SSL certificate verification issue
+                import urllib.request
+                import ssl
+                
+                # Create an SSL context that uses certifi's certificates
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+                
+                # Monkey patch urllib to use our SSL context
+                original_urlopen = urllib.request.urlopen
+                def urlopen_with_context(url, *args, **kwargs):
+                    if 'context' not in kwargs:
+                        kwargs['context'] = ssl_context
+                    return original_urlopen(url, *args, **kwargs)
+                urllib.request.urlopen = urlopen_with_context
+                
                 self.reader = easyocr.Reader(self.languages, gpu=False)
+                
+                # Restore original urlopen
+                urllib.request.urlopen = original_urlopen
+                
                 logger.info("EasyOCR initialized successfully")
             elif self.engine == "tesseract":
                 if not PYTESSERACT_AVAILABLE:
@@ -103,16 +125,19 @@ class OCRProcessor:
         full_text = []
         
         for (bbox, text, confidence) in results:
+            # Convert bbox to native Python types
+            bbox_list = [[float(x), float(y)] for x, y in bbox] if bbox else []
+            
             texts.append({
-                "text": text,
+                "text": str(text),
                 "confidence": float(confidence),
-                "bbox": bbox
+                "bbox": bbox_list
             })
             confidences.append(float(confidence))
             full_text.append(text)
         
         # Calculate average confidence
-        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+        avg_confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
         
         return {
             "text": " ".join(full_text),
@@ -141,19 +166,19 @@ class OCRProcessor:
         for i in range(n_boxes):
             if int(data['conf'][i]) > 0:  # Filter out low confidence
                 lines.append({
-                    "text": data['text'][i],
+                    "text": str(data['text'][i]),
                     "confidence": float(data['conf'][i]) / 100.0,  # Convert to 0-1 range
                     "bbox": [
-                        data['left'][i],
-                        data['top'][i],
-                        data['left'][i] + data['width'][i],
-                        data['top'][i] + data['height'][i]
+                        int(data['left'][i]),
+                        int(data['top'][i]),
+                        int(data['left'][i] + data['width'][i]),
+                        int(data['top'][i] + data['height'][i])
                     ]
                 })
                 confidences.append(float(data['conf'][i]) / 100.0)
         
         # Calculate average confidence
-        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+        avg_confidence = float(sum(confidences) / len(confidences)) if confidences else 0.0
         
         return {
             "text": text.strip(),
